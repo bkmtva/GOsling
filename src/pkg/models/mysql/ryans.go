@@ -6,6 +6,8 @@ import (
 	"moduls/pkg/models"
 )
 
+// code
+
 // Define a SnippetModel type which wraps a sql.DB connection pool.
 type SnippetModel struct {
 	DB *sql.DB
