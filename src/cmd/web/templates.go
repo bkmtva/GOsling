@@ -2,6 +2,7 @@ package main
 
 import (
 	"html/template" // New import
+	"moduls/pkg/forms"
 	"moduls/pkg/models"
 	"path/filepath" // New import
 	"time"
@@ -14,6 +15,7 @@ import (
 // Include a Snippets field in the templateData struct.
 type templateData struct {
 	CurrentYear int
+	Form        *forms.Form
 	Snippet     *models.Snippet
 	Snippets    []*models.Snippet
 }
