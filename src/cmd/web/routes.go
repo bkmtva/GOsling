@@ -9,8 +9,6 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/snippet/create", app.createSnippet)
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
-	// Pass the servemux as the 'next' parameter to the secureHeaders middlewar
-	// Because secureHeaders is just a function, and the function returns a
-	// http.Handler we don't need to do anything else.
-	return secureHeaders(mux)
+	// Wrap the existing chain with the recoverPanic middleware.
+	return app.recoverPanic(app.logRequest(secureHeaders(mux)))
 }
