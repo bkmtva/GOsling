@@ -8,20 +8,27 @@ import (
 	"moduls/pkg/models/mysql" // New import
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golangcollege/sessions"
 )
 
 type application struct {
 	errorLog      *log.Logger
 	infoLog       *log.Logger
+	session       *sessions.Session
 	snippets      *mysql.SnippetModel
 	templateCache map[string]*template.Template
 }
 
 func main() {
-	dsn := flag.String("dsn", "meruyert:merugo@/gosling?parseTime=true", "MySQL database")
 	addr := flag.String("addr", ":4000", "HTTP network address")
+	dsn := flag.String("dsn", "spllendide:bkm@/gosling?parseTime=true", "MySQL database")
+	// Define a new command-line flag for the session secret (a random key whic
+	// will be used to encrypt and authenticate session cookies). It should be
+	// bytes long.
+	secret := flag.String("secret", "s6Ndh+pPbnzHbS*+9Pk8qGWhTzbpa@ge", "Secret")
 	flag.Parse()
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
@@ -30,12 +37,16 @@ func main() {
 		errorLog.Fatal(err)
 	}
 	defer db.Close()
-	// Initialize a new template cache...
 	templateCache, err := newTemplateCache("./ui/html/")
 	if err != nil {
 		errorLog.Fatal(err)
 	}
-	// And add it to the application dependencies.
+	// Use the sessions.New() function to initialize a new session manager,
+	// passing in the secret key as the parameter. Then we configure it so
+	// sessions always expires after 12 hours.
+	session := sessions.New([]byte(*secret))
+	session.Lifetime = 12 * time.Hour
+	// And add the session manager to our application dependencies.
 	app := &application{
 		errorLog:      errorLog,
 		infoLog:       infoLog,
@@ -52,8 +63,6 @@ func main() {
 	errorLog.Fatal(err)
 }
 
-// The openDB() function wraps sql.Open() and returns a sql.DB connection pool
-// for a given DSN.
 func openDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
