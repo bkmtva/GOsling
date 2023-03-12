@@ -15,6 +15,7 @@ import (
 // Include a Snippets field in the templateData struct.
 type templateData struct {
 	AuthenticatedUser int
+	CSRFToken         string
 	CurrentYear       int
 	Flash             string
 	Form              *forms.Form

@@ -28,12 +28,11 @@ import (
 
 func (app *application) routes() http.Handler {
 	standardMiddleware := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
-	dynamicMiddleware := alice.New(app.session.Enable)
+	// Use the nosurf middleware on all our 'dynamic' routes.
+	dynamicMiddleware := alice.New(app.session.Enable, noSurf)
 	mux := pat.New()
 	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
-	// Add the requireAuthenticatedUser middleware to the chain.
 	mux.Get("/snippet/create", dynamicMiddleware.Append(app.requireAuthenticatedUser))
-	// Add the requireAuthenticatedUser middleware to the chain.
 	mux.Post("/snippet/create", dynamicMiddleware.Append(app.requireAuthenticatedUser))
 	mux.Get("/snippet/:id", dynamicMiddleware.ThenFunc(app.showSnippet))
 	mux.Get("/user/signup", dynamicMiddleware.ThenFunc(app.signupUserForm))
