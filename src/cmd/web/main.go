@@ -15,6 +15,10 @@ import (
 	"github.com/golangcollege/sessions"
 )
 
+type contextKey string
+
+var contextKeyUser = contextKey("user")
+
 type application struct {
 	errorLog      *log.Logger
 	infoLog       *log.Logger
@@ -26,7 +30,7 @@ type application struct {
 
 func main() {
 	addr := flag.String("addr", ":4000", "HTTP network address")
-	dsn := flag.String("dsn", "root:meru@1221@/gosling?parseTime=true", "MySQL database")
+	dsn := flag.String("dsn", "spllendide:bkm@/gosling?parseTime=true", "MySQL database")
 	// Define a new command-line flag for the session secret (a random key whic
 	// will be used to encrypt and authenticate session cookies). It should be
 	// bytes long.
