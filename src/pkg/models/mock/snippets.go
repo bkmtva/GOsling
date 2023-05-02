@@ -1,8 +1,9 @@
 package mock
 
 import (
-	"moduls/pkg/models"
 	"time"
+
+	"moduls/pkg/models"
 )
 
 var mockSnippet = &models.Snippet{
@@ -13,11 +14,15 @@ var mockSnippet = &models.Snippet{
 	Expires: time.Now(),
 }
 
+// SnippetModel defines a type which wraps a sql.DB connection pool.
 type SnippetModel struct{}
 
+// Insert will insert a new snippet into the database.
 func (m *SnippetModel) Insert(title, content, expires string) (int, error) {
 	return 2, nil
 }
+
+// Get will return a specific snippet based on its id.
 func (m *SnippetModel) Get(id int) (*models.Snippet, error) {
 	switch id {
 	case 1:
@@ -26,6 +31,8 @@ func (m *SnippetModel) Get(id int) (*models.Snippet, error) {
 		return nil, models.ErrNoRecord
 	}
 }
+
+// Latest will return the 10 most recently created snippets.
 func (m *SnippetModel) Latest() ([]*models.Snippet, error) {
 	return []*models.Snippet{mockSnippet}, nil
 }

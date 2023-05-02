@@ -1,11 +1,11 @@
 package mysql
 
 import (
-	"moduls/pkg/models"
 	"reflect"
 	"testing"
 	"time"
-	// "github.com/alexedwards.net/snippetbox/pkg/models"
+
+	"moduls/pkg/models"
 )
 
 func TestUserModelGet(t *testing.T) {
@@ -14,6 +14,7 @@ func TestUserModelGet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("mysql: skipping integration test")
 	}
+
 	// Set up a suite of table-driven tests and expected results.
 	tests := []struct {
 		name      string
@@ -26,8 +27,8 @@ func TestUserModelGet(t *testing.T) {
 			userID: 1,
 			wantUser: &models.User{
 				ID:      1,
-				Name:    "Alice Jone",
-				Email:   "alice@gmail.com",
+				Name:    "Alice Jones",
+				Email:   "alice@example.com",
 				Created: time.Date(2018, 12, 23, 17, 25, 22, 0, time.UTC),
 			},
 			wantError: nil,
@@ -37,23 +38,34 @@ func TestUserModelGet(t *testing.T) {
 			userID:    0,
 			wantUser:  nil,
 			wantError: models.ErrNoRecord,
-		}, {
-			name:     "Non-existent ID",
-			userID:   2,
-			wantUser: nil,
-		}}
+		},
+		{
+			name:      "Non-existent ID",
+			userID:    2,
+			wantUser:  nil,
+			wantError: models.ErrNoRecord,
+		},
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Initialize a connection pool to our test database, and defer a
+			// call to the teardown function, so it is always run immediately
+			// before this sub-test returns.
 			db, teardown := newTestDB(t)
 			defer teardown()
+
 			// Create a new instance of the UserModel.
 			m := UserModel{db}
+
 			// Call the UserModel.Get() method and check that the return value
 			// and error match the expected values for the sub-test.
 			user, err := m.Get(tt.userID)
+
 			if err != tt.wantError {
 				t.Errorf("want %v; got %s", tt.wantError, err)
 			}
+
 			if !reflect.DeepEqual(user, tt.wantUser) {
 				t.Errorf("want %v; got %v", tt.wantUser, user)
 			}

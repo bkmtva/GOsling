@@ -10,13 +10,15 @@ import (
 	"net/url"
 	"regexp"
 	"testing"
-
-	"moduls/pkg/models/mock"
 	"time"
 
 	"github.com/golangcollege/sessions"
+
+	"moduls/pkg/models/mock"
 )
 
+// Define a regular expression which captures the CSRF token value from the
+// HTML for our user signup page.
 var csrfTokenRX = regexp.MustCompile(`<input type="hidden" name="csrf_token" value="(.+)">`)
 
 func extractCSRFToken(t *testing.T, body []byte) string {
@@ -28,6 +30,7 @@ func extractCSRFToken(t *testing.T, body []byte) string {
 	if len(matches) < 2 {
 		t.Fatal("no csrf token found in body")
 	}
+
 	return html.UnescapeString(string(matches[1]))
 }
 
@@ -39,29 +42,36 @@ func newTestApplication(t *testing.T) *application {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// Create a session manager instance, with the same settings as production.
 	session := sessions.New([]byte("3dSm5MnygFHh7XidAtbskXrjbwfoJcbJ"))
 	session.Lifetime = 12 * time.Hour
 	session.Secure = true
+	session.SameSite = http.SameSiteStrictMode
+
 	// Initialize the dependencies, using the mocks for the loggers and
 	// database models.
 	return &application{
 		errorLog:      log.New(ioutil.Discard, "", 0),
 		infoLog:       log.New(ioutil.Discard, "", 0),
+		templateCache: templateCache,
 		session:       session,
 		snippets:      &mock.SnippetModel{},
-		templateCache: templateCache,
 		users:         &mock.UserModel{},
 	}
 }
 
 // Define a custom testServer type which anonymously embeds a httptest.Server
 // instance.
+type testServer struct {
+	*httptest.Server
+}
 
-// Create a newTest
-
+// Create a newTestServer helper which initalizes and returns a new instance
+// of our custom testServer type.
 func newTestServer(t *testing.T, h http.Handler) *testServer {
 	ts := httptest.NewTLSServer(h)
+
 	// Initialize a new cookie jar.
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -70,6 +80,7 @@ func newTestServer(t *testing.T, h http.Handler) *testServer {
 	// Add the cookie jar to the client, so that response cookies are stored
 	// and then sent with subsequent requests.
 	ts.Client().Jar = jar
+
 	// Disable redirect-following for the client. Essentially this function
 	// is called after a 3xx response is received by the client, and returning
 	// the http.ErrUseLastResponse error forces it to immediately return the
@@ -77,6 +88,7 @@ func newTestServer(t *testing.T, h http.Handler) *testServer {
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
+
 	return &testServer{ts}
 }
 
@@ -88,29 +100,32 @@ func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, []byt
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	defer rs.Body.Close()
 	body, err := ioutil.ReadAll(rs.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return rs.StatusCode, rs.Header, body
 }
 
-type testServer struct {
-	*httptest.Server
-}
-
+// postForm method for sending POST requests to the test server.
+// The final parameter to this method is a url.Values object which can contain
+// any data that you want to send in the request body.
 func (ts *testServer) postForm(t *testing.T, urlPath string, form url.Values) (int, http.Header, []byte) {
 	rs, err := ts.Client().PostForm(ts.URL+urlPath, form)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// Read the response body.
 	defer rs.Body.Close()
 	body, err := ioutil.ReadAll(rs.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// Return the response status, headers and body.
 	return rs.StatusCode, rs.Header, body
 }
