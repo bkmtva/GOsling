@@ -1,6 +1,15 @@
 package database
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"log"
+	"moduls/pkg/models"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 var (
 	ErrCantFindProduct    = errors.New("can't find the product")
@@ -12,8 +21,30 @@ var (
 	ErrCantBuyCartItem    = errors.New("can't buy cart item")
 )
 
-func AddProductToCart() {
+func AddProductToCart(ctx context.Context, prodCollection, userCollection *mongo.Collection, productID primitive.ObjectID, userID string) error {
 
+	searchfromdb, err := prodCollection.Find(ctx, bson.M{"id": productID})
+
+	if err != nil {
+		log.Println(err)
+		return ErrCantFindProduct
+	}
+
+	var productCart []models.ProductUser
+	err = searchfromdb.All(ctx, &productcart)
+	if err != nil {
+		log.Println(err)
+		return ErrCantDecodeProducts
+	}
+
+	filter := bson.D{primitive.E{Key: "_id", Value: id}}
+	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "usercart", Value: bson.D{{Key: "$each", Value: productCart}}}}}}
+
+	_, err = userCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return ErrCantUpdateUser
+	}
+	return nil
 }
 
 func RemoveCartItem() {
