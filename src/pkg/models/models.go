@@ -60,3 +60,18 @@ type Payment struct {
 	Digital bool `json:"digital" bson:"digital"`
 	COD     bool `json:"cod"     bson:"cod"`
 }
+
+type Comment struct {
+	Comment_ID primitive.ObjectID `json:"_id" bson:"_id"`
+	UserID     string             `json:"user_id"`
+	ProductID  primitive.ObjectID `json:"product_id"`
+	Comment    string             `json:"comment"`
+	CreatedAt  time.Time          `json:"created_at"`
+}
+
+type Rating struct {
+	UserID    string             `json:"user_id" bson:"user_id"`
+	ProductID primitive.ObjectID `json:"product_id"`
+	Rating    uint8              `json:"rating"`
+	LastRated time.Time          `json:"last_rated"`
+}

@@ -13,6 +13,7 @@ import (
 
 func DBSet() *mongo.Client {
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://diana:12345@localhost:27017"))
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,4 +44,14 @@ func UserData(client *mongo.Client, CollectionName string) *mongo.Collection {
 func ProductData(client *mongo.Client, CollectionName string) *mongo.Collection {
 	var productcollection *mongo.Collection = client.Database("Ecommerce").Collection(CollectionName)
 	return productcollection
+}
+
+func CommentData(client *mongo.Client, CollectionName string) *mongo.Collection {
+	var commentcollection *mongo.Collection = client.Database("Ecommerce").Collection(CollectionName)
+	return commentcollection
+}
+
+func RatingData(client *mongo.Client, CollectionName string) *mongo.Collection {
+	var ratingcollection *mongo.Collection = client.Database("Ecommerce").Collection(CollectionName)
+	return ratingcollection
 }

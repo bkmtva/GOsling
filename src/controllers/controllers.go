@@ -22,6 +22,8 @@ import (
 
 var UserCollection *mongo.Collection = database.UserData(database.Client, "Users")
 var ProductCollection *mongo.Collection = database.ProductData(database.Client, "Products")
+var CommentCollection *mongo.Collection = database.CommentData(database.Client, "Comments")
+var RatingCollection *mongo.Collection = database.RatingData(database.Client, "Rating")
 var Validate = validator.New()
 
 func HashPassword(password string) string {
@@ -170,8 +172,6 @@ func SearchProduct() gin.HandlerFunc {
 		}
 		defer cursor.Close(ctx)
 		if err := cursor.Err(); err != nil {
-			// Don't forget to log errors. I log them really simple here just
-			// to get the point across.
 			log.Println(err)
 			c.IndentedJSON(400, "invalid")
 			return
@@ -219,11 +219,10 @@ func SearchProductByQuery() gin.HandlerFunc {
 
 func FilterProducts() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get query parameters
+
 		minPriceStr := c.Query("min_price")
 		maxPriceStr := c.Query("max_price")
 
-		// Parse query parameters to float64
 		minPrice, err := strconv.ParseFloat(minPriceStr, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid min_price parameter"})
@@ -250,7 +249,6 @@ func FilterProducts() gin.HandlerFunc {
 		}
 		defer cursor.Close(context.Background())
 
-		// Iterate over the cursor and collect the filtered products
 		var filteredProducts []models.Product
 		for cursor.Next(context.Background()) {
 			var product models.Product
@@ -263,4 +261,159 @@ func FilterProducts() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, filteredProducts)
 	}
+}
+
+func CommentProduct() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var comment models.Comment
+		if err := c.ShouldBindJSON(&comment); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		comment.Comment_ID = primitive.NewObjectID()
+		result, err := CommentCollection.InsertOne(ctx, comment)
+		if err != nil {
+			fmt.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save the comment"})
+			return
+		}
+
+		commentID := result.InsertedID.(primitive.ObjectID).Hex()
+
+		c.JSON(http.StatusOK, gin.H{"message": "Comment saved successfully", "comment_id": commentID})
+
+	}
+}
+
+// RATING
+
+func RateProduct() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		var rating models.Rating
+		if err := c.ShouldBindJSON(&rating); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if rating.Rating < 1 || rating.Rating > 5 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rating value. Rating must be between 1 and 5."})
+			return
+		}
+
+		existingRating := getExistingRating(rating.UserID, rating.ProductID)
+		if existingRating != nil {
+
+			existingRating.Rating = rating.Rating
+			existingRating.LastRated = time.Now()
+			updateRating(existingRating)
+			UpdateProductRating()
+			c.JSON(http.StatusOK, gin.H{"message": "Rating updated successfully"})
+			return
+		}
+
+		newRating := &models.Rating{
+			UserID:    rating.UserID,
+			ProductID: rating.ProductID,
+			Rating:    rating.Rating,
+			LastRated: time.Now(),
+		}
+		saveRating(newRating)
+		UpdateProductRating()
+
+		c.JSON(http.StatusOK, gin.H{"message": "Rating saved successfully"})
+	}
+}
+
+func getExistingRating(userID string, productID primitive.ObjectID) *models.Rating {
+
+	fmt.Println("getExistingRating")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var founduser models.User
+	err := UserCollection.FindOne(ctx, bson.M{"user_id": userID}).Decode(&founduser)
+	fmt.Println(founduser)
+	filter := bson.M{"user_id": userID, "productid": productID}
+	var existingRating models.Rating
+	err = RatingCollection.FindOne(ctx, filter).Decode(&existingRating)
+
+	if err != nil {
+
+		// No existing rating found
+		return nil
+	}
+
+	return &existingRating
+}
+
+func saveRating(rating *models.Rating) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := RatingCollection.InsertOne(ctx, rating)
+	if err != nil {
+		fmt.Println("Failed to save the rating")
+	}
+}
+
+func updateRating(rating *models.Rating) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{"user_id": rating.UserID, "productid": rating.ProductID}
+	update := bson.M{"$set": bson.M{"rating": rating.Rating, "last_rated": rating.LastRated}}
+	_, err := RatingCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		fmt.Println("Failed to update the rating")
+	}
+}
+
+func UpdateProductRating() {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pipeline := bson.A{
+		bson.M{
+			"$group": bson.M{
+				"_id":           "$productid",
+				"averageRating": bson.M{"$avg": "$rating"},
+			},
+		},
+	}
+
+	cursor, err := RatingCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		fmt.Println("Failed to aggregate ratings")
+		return
+	}
+
+	for cursor.Next(ctx) {
+		var result struct {
+			ProductID     primitive.ObjectID `bson:"_id"`
+			AverageRating float64            `bson:"averageRating"`
+		}
+		if err := cursor.Decode(&result); err != nil {
+			fmt.Println("Failed to decode aggregate result")
+			return
+		}
+
+		filter := bson.M{"_id": result.ProductID}
+		update := bson.M{"$set": bson.M{"rating": result.AverageRating}}
+
+		_, err := ProductCollection.UpdateOne(ctx, filter, update)
+		if err != nil {
+			fmt.Println("Failed to update product rating")
+		}
+	}
+
+	if err := cursor.Err(); err != nil {
+		fmt.Println("Error occurred during cursor iteration")
+	}
+
+	fmt.Println("Product ratings updated successfully")
 }
