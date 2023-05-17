@@ -7,14 +7,14 @@ services:
     ports:
       - 27017:27017
     environment:
-      MONGO_INITDB_ROOT_USERNAME: development
-      MONGO_INITDB_ROOT_PASSWORD: testpassword
+      MONGO_INITDB_ROOT_USERNAME: diana
+      MONGO_INITDB_ROOT_PASSWORD: 12345
 
   mongo-express:
     image: mongo-express
     ports:
       - 8081:8081
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: development
-      ME_CONFIG_MONGODB_ADMINPASSWORD: testpassword
-      ME_CONFIG_MONGODB_URL: mongodb://development:testpassword@mongo:27017/
+      ME_CONFIG_MONGODB_ADMINUSERNAME: diana
+      ME_CONFIG_MONGODB_ADMINPASSWORD: 12345
+      ME_CONFIG_MONGODB_URL: mongodb://diana:12345@mongo:27017/
