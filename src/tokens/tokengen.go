@@ -33,7 +33,7 @@ func TokenGenerator(email string, firstname string, lastname string, uid string)
 		Last_Name:  lastname,
 		Uid:        uid,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Minute * time.Duration(2)).Unix(),
+			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(2)).Unix(),
 		},
 	}
 	refreshclaims := &SignedDetails{
